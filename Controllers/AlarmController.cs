@@ -29,12 +29,17 @@ namespace com.hollysys.Industrial_control_alarm_system.Controllers
         [HttpGet]
         public async Task<ActionResult<PagedResult<Alarm>>> GetRealTimeAlarms(DateTime? time, int pageSize = 30)
         {
+            string cacheKey;
             if (!time.HasValue)
             {
                 time = DateTime.Now;
+                cacheKey = $"RealTimeAlarms_TimeIsNull_{pageSize}";
+            }
+            else
+            {
+                cacheKey = $"RealTimeAlarms_{time.Value.Ticks}_{pageSize}";
             }
 
-            string cacheKey = $"RealTimeAlarms_{time.Value.Ticks}_{pageSize}";
             var cachedResult = await redisCacheService.GetAsync<PagedResult<Alarm>>(cacheKey);
             if (cachedResult != null)
             {
@@ -57,8 +62,8 @@ namespace com.hollysys.Industrial_control_alarm_system.Controllers
                 TotalItems = totalItems,
                 TotalPages = totalPages
             };
-
-            await redisCacheService.SetAsync(cacheKey, result, TimeSpan.FromMinutes(5));
+            
+            await redisCacheService.SetAsync(cacheKey, result, TimeSpan.FromMinutes(60));
             return result;
         }
 
@@ -82,7 +87,7 @@ namespace com.hollysys.Industrial_control_alarm_system.Controllers
                 .Take(30)
                 .ToListAsync();
 
-            await redisCacheService.SetAsync(cacheKey, alarms, TimeSpan.FromMinutes(5));
+            await redisCacheService.SetAsync(cacheKey, alarms, TimeSpan.FromMinutes(60));
             return alarms;
         }
 
@@ -124,7 +129,7 @@ namespace com.hollysys.Industrial_control_alarm_system.Controllers
                 TotalPages = totalPages
             };
 
-            await redisCacheService.SetAsync(cacheKey, result, TimeSpan.FromMinutes(5));
+            await redisCacheService.SetAsync(cacheKey, result, TimeSpan.FromMinutes(60));
             return result;
         }
 
@@ -148,7 +153,7 @@ namespace com.hollysys.Industrial_control_alarm_system.Controllers
                 .Take(30)
                 .ToListAsync();
 
-            await redisCacheService.SetAsync(cacheKey, alarms, TimeSpan.FromMinutes(5));
+            await redisCacheService.SetAsync(cacheKey, alarms, TimeSpan.FromMinutes(60));
             return alarms;
         }
 
@@ -176,7 +181,7 @@ namespace com.hollysys.Industrial_control_alarm_system.Controllers
                 .Take(10)
                 .ToListAsync();
 
-            await redisCacheService.SetAsync(cacheKey, alarms, TimeSpan.FromMinutes(5));
+            await redisCacheService.SetAsync(cacheKey, alarms, TimeSpan.FromMinutes(60));
             return alarms;
         }
 
@@ -254,7 +259,7 @@ namespace com.hollysys.Industrial_control_alarm_system.Controllers
                 TotalPages = totalPages
             };
 
-            await redisCacheService.SetAsync(cacheKey, result, TimeSpan.FromMinutes(5));
+            await redisCacheService.SetAsync(cacheKey, result, TimeSpan.FromMinutes(60));
             return result;
         }
 
@@ -278,6 +283,8 @@ namespace com.hollysys.Industrial_control_alarm_system.Controllers
             };
             context.Alarms.Add(alarm);
             await redisCacheService.RemoveAsync("Latest30RealTimeAlarms");
+            await redisCacheService.RemoveAsync("TenRealTimeAlarm");
+            await redisCacheService.RemoveByPatternAsync("RealTimeAlarms_TimeIsNull_");
             await context.SaveChangesAsync();
         }
 
@@ -297,8 +304,10 @@ namespace com.hollysys.Industrial_control_alarm_system.Controllers
             alarm.IsConfirmed = true;
             alarm.ConfirmTime = DateTime.Now;
             await context.SaveChangesAsync();
-            await redisCacheService.RemoveByPatternAsync("RealTimeAlarms_");
+            //await redisCacheService.RemoveByPatternAsync("RealTimeAlarms_");
             await redisCacheService.RemoveByPatternAsync("HistoryAlarms_");
+            await redisCacheService.RemoveAsync("TenRealTimeAlarm");
+            await redisCacheService.RemoveByPatternAsync("RealTimeAlarms_TimeIsNull_");
             return NoContent();
         }
 
@@ -318,8 +327,10 @@ namespace com.hollysys.Industrial_control_alarm_system.Controllers
             alarm.IsRecovered = true;
             alarm.RecoverTime = DateTime.Now;
             await context.SaveChangesAsync();
-            await redisCacheService.RemoveByPatternAsync("RealTimeAlarms_");
+            //await redisCacheService.RemoveByPatternAsync("RealTimeAlarms_");
             await redisCacheService.RemoveByPatternAsync("HistoryAlarms_");
+            await redisCacheService.RemoveAsync("TenRealTimeAlarm");
+            await redisCacheService.RemoveByPatternAsync("RealTimeAlarms_TimeIsNull_");
             return NoContent();
         }
     }
