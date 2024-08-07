@@ -40,6 +40,10 @@ namespace MyProject.Services
         {
             var server = _redis.GetServer(_redis.GetEndPoints().First());
             var keys = server.Keys(pattern: pattern + "*").ToArray();
+            if (keys.Length == 0)
+            {
+                return;
+            }
             foreach (var key in keys)
             {
                 await _database.KeyDeleteAsync(key);
