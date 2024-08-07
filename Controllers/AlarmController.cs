@@ -282,10 +282,12 @@ namespace com.hollysys.Industrial_control_alarm_system.Controllers
                 IsRecovered = false
             };
             context.Alarms.Add(alarm);
-            await redisCacheService.RemoveAsync("Latest30RealTimeAlarms");
-            await redisCacheService.RemoveAsync("TenRealTimeAlarm");
-            await redisCacheService.RemoveByPatternAsync("RealTimeAlarms_TimeIsNull_");
-            await context.SaveChangesAsync();
+            if (await context.SaveChangesAsync() > 0)
+            {
+                await redisCacheService.RemoveAsync("Latest30RealTimeAlarms");
+                await redisCacheService.RemoveAsync("TenRealTimeAlarm");
+                await redisCacheService.RemoveByPatternAsync("RealTimeAlarms_TimeIsNull_");
+            }
         }
 
         /// <summary>
@@ -303,11 +305,14 @@ namespace com.hollysys.Industrial_control_alarm_system.Controllers
             }
             alarm.IsConfirmed = true;
             alarm.ConfirmTime = DateTime.Now;
-            await context.SaveChangesAsync();
-            //await redisCacheService.RemoveByPatternAsync("RealTimeAlarms_");
-            await redisCacheService.RemoveByPatternAsync("HistoryAlarms_");
-            await redisCacheService.RemoveAsync("TenRealTimeAlarm");
-            await redisCacheService.RemoveByPatternAsync("RealTimeAlarms_TimeIsNull_");
+            if (await context.SaveChangesAsync() > 0)
+            {
+                //await redisCacheService.RemoveByPatternAsync("RealTimeAlarms_");
+                await redisCacheService.RemoveByPatternAsync("HistoryAlarms_");
+                await redisCacheService.RemoveAsync("TenRealTimeAlarm");
+                await redisCacheService.RemoveByPatternAsync("RealTimeAlarms_TimeIsNull_");
+            }
+            
             return NoContent();
         }
 
@@ -326,11 +331,13 @@ namespace com.hollysys.Industrial_control_alarm_system.Controllers
             }
             alarm.IsRecovered = true;
             alarm.RecoverTime = DateTime.Now;
-            await context.SaveChangesAsync();
-            //await redisCacheService.RemoveByPatternAsync("RealTimeAlarms_");
-            await redisCacheService.RemoveByPatternAsync("HistoryAlarms_");
-            await redisCacheService.RemoveAsync("TenRealTimeAlarm");
-            await redisCacheService.RemoveByPatternAsync("RealTimeAlarms_TimeIsNull_");
+            if (await context.SaveChangesAsync() > 0)
+            {
+                //await redisCacheService.RemoveByPatternAsync("RealTimeAlarms_");
+                await redisCacheService.RemoveByPatternAsync("HistoryAlarms_");
+                await redisCacheService.RemoveAsync("TenRealTimeAlarm");
+                await redisCacheService.RemoveByPatternAsync("RealTimeAlarms_TimeIsNull_");
+            }
             return NoContent();
         }
     }
