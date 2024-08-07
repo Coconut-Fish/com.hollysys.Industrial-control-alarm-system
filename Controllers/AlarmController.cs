@@ -1,10 +1,8 @@
-﻿using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using com.hollysys.Industrial_control_alarm_system.Data;
 using com.hollysys.Industrial_control_alarm_system.Models;
 using Microsoft.EntityFrameworkCore;
 using com.hollysys.Industrial_control_alarm_system.ViewModels;
-using com.hollysys.Industrial_control_alarm_system.Services;
 using MyProject.Services;
 using System.Text.Json;
 
