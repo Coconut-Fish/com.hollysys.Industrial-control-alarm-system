@@ -1,8 +1,8 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using com.hollysys.Industrial_control_alarm_system.Models;
+using Server.Models;
 using System.Security.Claims;
 
-namespace com.hollysys.Industrial_control_alarm_system.Data
+namespace Server.Data
 {
     public class IndustrialControlAlarmSystemContext : DbContext
     {

@@ -1,13 +1,14 @@
-using com.hollysys.Industrial_control_alarm_system.Data;
+using Server.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
-using MyProject.Services;
+using Server.Services;
 using System.Reflection;
+using Microsoft.Extensions.Caching.Distributed;
 
 var builder = WebApplication.CreateBuilder(args);
 
 #region  ˝æ›ø‚≈‰÷√
-var connectionString = builder.Configuration.GetConnectionString("LocalhostConnection");
+var connectionString = builder.Configuration.GetConnectionString("MySQLLocalhostConnection");
 builder.Services.AddDbContext<IndustrialControlAlarmSystemContext>(options =>
   options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString)));
 #endregion
@@ -26,6 +27,22 @@ builder.Services.AddCors(options =>
         });
 });
 
+#region redis≈‰÷√
+var RedisConnectionString = builder.Configuration.GetConnectionString("MyRedisConStr");
+builder.Services.AddStackExchangeRedisCache(options =>
+{
+    options.Configuration = RedisConnectionString;
+    options.InstanceName = "";
+});
+builder.Services.AddSingleton<RedisCacheService>(sp =>
+{
+    var cache = sp.GetRequiredService<IDistributedCache>();
+    return new RedisCacheService(cache, RedisConnectionString!);
+});
+// ≈‰÷√ RedisCacheService
+//builder.Services.AddSingleton(new RedisCacheService(RedisConnectionString!));
+#endregion
+
 builder.Services.AddControllers();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
@@ -39,9 +56,7 @@ builder.Services.AddSwaggerGen(c =>
     c.IncludeXmlComments(xmlPath);
 });
 
-// ≈‰÷√ RedisCacheService
-var redisConnectionString = builder.Configuration.GetSection("Redis:ConnectionString").Value;
-builder.Services.AddSingleton(new RedisCacheService(redisConnectionString!));
+
 
 var app = builder.Build();
 

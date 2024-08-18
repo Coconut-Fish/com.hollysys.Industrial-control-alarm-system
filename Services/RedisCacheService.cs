@@ -1,12 +1,13 @@
+using Microsoft.Extensions.Caching.Distributed;
 using StackExchange.Redis;
 using System;
 using System.Threading.Tasks;
 
-namespace MyProject.Services
+namespace Server.Services
 {
     public class RedisCacheService
     {
-        private readonly ConnectionMultiplexer _redis;
+        /*private readonly ConnectionMultiplexer _redis;
         private readonly IDatabase _database;
 
         public RedisCacheService(string connectionString)
@@ -21,14 +22,14 @@ namespace MyProject.Services
             await _database.StringSetAsync(key, json, expiry);
         }
 
-        public async Task<T> GetAsync<T>(string key)
+        public async Task<T?> GetAsync<T>(string key)
         {
             var json = await _database.StringGetAsync(key);
             if (json.IsNullOrEmpty)
             {
                 return default;
             }
-            return System.Text.Json.JsonSerializer.Deserialize<T>(json);
+            return System.Text.Json.JsonSerializer.Deserialize<T>(json!);
         }
 
         public async Task RemoveAsync(string key)
@@ -38,6 +39,53 @@ namespace MyProject.Services
 
         public async Task RemoveByPatternAsync(string pattern)
         {
+            var Server = _redis.GetServer(_redis.GetEndPoints().First());
+            var keys = Server.Keys(pattern: pattern + "*").ToArray();
+            if (keys.Length == 0)
+            {
+                return;
+            }
+            foreach (var key in keys)
+            {
+                await _database.KeyDeleteAsync(key);
+            }
+        }*/
+
+        private readonly IDistributedCache cache;
+        private readonly ConnectionMultiplexer _redis;
+
+        public RedisCacheService(IDistributedCache cache,string connectionString)
+        {
+            this.cache = cache;
+            this._redis = ConnectionMultiplexer.Connect(connectionString);
+        }
+
+        public void SetAsync<T>(string key, T value, TimeSpan? expiry = null, CancellationToken token = default)
+        {
+            var json = System.Text.Json.JsonSerializer.Serialize(value);
+            cache.SetStringAsync(key, json, new DistributedCacheEntryOptions
+            {
+                AbsoluteExpirationRelativeToNow = expiry
+            },token);
+        }
+
+        public async Task<T?> GetAsync<T>(string key, CancellationToken token = default)
+        {
+            var json = await cache.GetStringAsync(key, token);
+            if (json == null)
+            {
+                return default;
+            }
+            return System.Text.Json.JsonSerializer.Deserialize<T>(json);
+        }
+
+        public async Task RemoveAsync(string key, CancellationToken token = default)
+        {
+            await cache.RemoveAsync(key, token);
+        }
+
+        public async Task RemoveByPatternAsync(string pattern, CancellationToken token = default)
+        {
             var server = _redis.GetServer(_redis.GetEndPoints().First());
             var keys = server.Keys(pattern: pattern + "*").ToArray();
             if (keys.Length == 0)
@@ -46,7 +94,7 @@ namespace MyProject.Services
             }
             foreach (var key in keys)
             {
-                await _database.KeyDeleteAsync(key);
+                await cache.RemoveAsync(key!, token);
             }
         }
     }

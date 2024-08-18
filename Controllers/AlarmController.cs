@@ -1,12 +1,13 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using com.hollysys.Industrial_control_alarm_system.Data;
-using com.hollysys.Industrial_control_alarm_system.Models;
+using Server.Data;
+using Server.Models;
 using Microsoft.EntityFrameworkCore;
-using com.hollysys.Industrial_control_alarm_system.ViewModels;
-using MyProject.Services;
+using Server.ViewModels;
+using Server.Services;
 using System.Text.Json;
+using Microsoft.Extensions.Caching.Distributed;
 
-namespace com.hollysys.Industrial_control_alarm_system.Controllers
+namespace Server.Controllers
 {
     [Route("api/[controller]/[action]")]
     [ApiController]
@@ -14,10 +15,12 @@ namespace com.hollysys.Industrial_control_alarm_system.Controllers
     {
         private readonly IndustrialControlAlarmSystemContext context;
         private readonly RedisCacheService redisCacheService;
-        public AlarmController(IndustrialControlAlarmSystemContext context, RedisCacheService redisCacheService)
+        private readonly IDistributedCache redis;
+        public AlarmController(IndustrialControlAlarmSystemContext context, RedisCacheService redisCacheService, IDistributedCache reids)
         {
             this.context = context;
             this.redisCacheService = redisCacheService;
+            this.redis = reids;
         }
 
         /// <summary>
@@ -25,9 +28,10 @@ namespace com.hollysys.Industrial_control_alarm_system.Controllers
         /// </summary>
         /// <param name="time"></param>
         /// <param name="pageSize"></param>
+        /// <param name="cancellationToken"></param>
         /// <returns></returns>
         [HttpGet]
-        public async Task<ActionResult<PagedResult<Alarm>>> GetRealTimeAlarms(DateTime? time, int pageSize = 30)
+        public async Task<ActionResult<PagedResult<Alarm>>> GetRealTimeAlarms(DateTime? time, CancellationToken cancellationToken = default,  int pageSize = 30)
         {
             string cacheKey;
             if (!time.HasValue)
@@ -40,7 +44,7 @@ namespace com.hollysys.Industrial_control_alarm_system.Controllers
                 cacheKey = $"RealTimeAlarms_{time.Value.Ticks}_{pageSize}";
             }
 
-            var cachedResult = await redisCacheService.GetAsync<PagedResult<Alarm>>(cacheKey);
+            var cachedResult = await redisCacheService.GetAsync<PagedResult<Alarm>>(cacheKey,cancellationToken);
             if (cachedResult != null)
             {
                 return cachedResult;
@@ -48,34 +52,35 @@ namespace com.hollysys.Industrial_control_alarm_system.Controllers
 
             var totalItems = await context.Alarms
                 .Where(e => e.IsConfirmed == false || e.IsRecovered == false)
-                .CountAsync();
+                .CountAsync(cancellationToken);
             var totalPages = (int)Math.Ceiling(totalItems / (double)pageSize);
             var alarms = await context.Alarms
                 .Where(e => e.IsConfirmed == false || e.IsRecovered == false)
                 .Where(e => e.AlarmTime < time)
                 .OrderByDescending(e => e.AlarmTime)
                 .Take(pageSize)
-                .ToListAsync();
+                .ToListAsync(cancellationToken);
             var result = new PagedResult<Alarm>
             {
                 Items = alarms,
                 TotalItems = totalItems,
                 TotalPages = totalPages
             };
-            
-            await redisCacheService.SetAsync(cacheKey, result, TimeSpan.FromMinutes(60));
+
+            redisCacheService.SetAsync(cacheKey, result, TimeSpan.FromMinutes(60), cancellationToken);
             return result;
         }
 
         /// <summary>
         /// 获取最近30条实时报警
         /// </summary>
+        /// <param name="cancellationToken"></param>
         /// <returns></returns>
         [HttpGet]
-        public async Task<ActionResult<List<Alarm>>> GetLatest30RealTimeAlarms()
+        public async Task<ActionResult<List<Alarm>>> GetLatest30RealTimeAlarms(CancellationToken cancellationToken = default)
         {
             string cacheKey = "Latest30RealTimeAlarms";
-            var cachedResult = await redisCacheService.GetAsync<List<Alarm>>(cacheKey);
+            var cachedResult = await redisCacheService.GetAsync<List<Alarm>>(cacheKey, cancellationToken);
             if (cachedResult != null)
             {
                 return cachedResult;
@@ -85,28 +90,34 @@ namespace com.hollysys.Industrial_control_alarm_system.Controllers
                 .Where(e => e.IsConfirmed == false || e.IsRecovered == false)
                 .OrderByDescending(e => e.AlarmTime)
                 .Take(30)
-                .ToListAsync();
+                .ToListAsync(cancellationToken);
 
-            await redisCacheService.SetAsync(cacheKey, alarms, TimeSpan.FromMinutes(60));
+            redisCacheService.SetAsync(cacheKey, alarms, TimeSpan.FromMinutes(60), cancellationToken);
             return alarms;
         }
 
         /// <summary>
         /// 获取历史报警（分页）
         /// </summary>
+        /// <param name="cancellationToken"></param>
         /// <param name="time"></param>
         /// <param name="pageSize"></param>
         /// <returns></returns>
         [HttpGet]
-        public async Task<ActionResult<PagedResult<Alarm>>> GetHistoryAlarms(DateTime? time, int pageSize = 30)
+        public async Task<ActionResult<PagedResult<Alarm>>> GetHistoryAlarms(DateTime? time, CancellationToken cancellationToken = default, int pageSize = 30)
         {
+            string cacheKey;
             if (!time.HasValue)
             {
                 time = DateTime.Now;
+                cacheKey = $"HistoryAlarms_TimeIsNull_{pageSize}";
+            }
+            else
+            {
+                cacheKey = $"RealTimeAlarms_{time.Value.Ticks}_{pageSize}";
             }
 
-            string cacheKey = $"HistoryAlarms_{time.Value.Ticks}_{pageSize}";
-            var cachedResult = await redisCacheService.GetAsync<PagedResult<Alarm>>(cacheKey);
+            var cachedResult = await redisCacheService.GetAsync<PagedResult<Alarm>>(cacheKey, cancellationToken);
             if (cachedResult != null)
             {
                 return cachedResult;
@@ -129,19 +140,20 @@ namespace com.hollysys.Industrial_control_alarm_system.Controllers
                 TotalPages = totalPages
             };
 
-            await redisCacheService.SetAsync(cacheKey, result, TimeSpan.FromMinutes(60));
+            redisCacheService.SetAsync(cacheKey, result, TimeSpan.FromMinutes(60), cancellationToken);
             return result;
         }
 
         /// <summary>
         /// 获取最近30条历史报警
         /// </summary>
+        /// <param name="cancellationToken"></param>
         /// <returns></returns>
         [HttpGet]
-        public async Task<ActionResult<List<Alarm>>> GetLatest30HistoryTimeAlarms()
+        public async Task<ActionResult<List<Alarm>>> GetLatest30HistoryTimeAlarms(CancellationToken cancellationToken = default)
         {
             string cacheKey = "Latest30HistoryTimeAlarms";
-            var cachedResult = await redisCacheService.GetAsync<List<Alarm>>(cacheKey);
+            var cachedResult = await redisCacheService.GetAsync<List<Alarm>>(cacheKey, cancellationToken);
             if (cachedResult != null)
             {
                 return cachedResult;
@@ -151,9 +163,9 @@ namespace com.hollysys.Industrial_control_alarm_system.Controllers
                 .Where(e => e.IsConfirmed == true || e.IsRecovered == true)
                 .OrderByDescending(e => e.AlarmTime)
                 .Take(30)
-                .ToListAsync();
+                .ToListAsync(cancellationToken);
 
-            await redisCacheService.SetAsync(cacheKey, alarms, TimeSpan.FromMinutes(60));
+            redisCacheService.SetAsync(cacheKey, alarms, TimeSpan.FromMinutes(60), cancellationToken);
             return alarms;
         }
 
@@ -161,12 +173,13 @@ namespace com.hollysys.Industrial_control_alarm_system.Controllers
         /// 依次按报警确认状态、报警恢复状态、报警级别、报警发生时间对所有报警进行排序
         /// 获取最近的10条报警
         /// </summary>
+        /// <param name="cancellationToken"></param>
         /// <returns></returns>
         [HttpGet]
-        public async Task<ActionResult<List<Alarm>>> GetTenRealTimeAlarm()
+        public async Task<ActionResult<List<Alarm>>> GetTenRealTimeAlarm(CancellationToken cancellationToken = default)
         {
             string cacheKey = "TenRealTimeAlarm";
-            var cachedResult = await redisCacheService.GetAsync<List<Alarm>>(cacheKey);
+            var cachedResult = await redisCacheService.GetAsync<List<Alarm>>(cacheKey, cancellationToken);
             if (cachedResult != null)
             {
                 return cachedResult;
@@ -179,24 +192,25 @@ namespace com.hollysys.Industrial_control_alarm_system.Controllers
                 .ThenBy(e => e.Level)
                 .ThenByDescending(e => e.AlarmTime)
                 .Take(10)
-                .ToListAsync();
+                .ToListAsync(cancellationToken);
 
-            await redisCacheService.SetAsync(cacheKey, alarms, TimeSpan.FromMinutes(60));
+            redisCacheService.SetAsync(cacheKey, alarms, TimeSpan.FromMinutes(60), cancellationToken);
             return alarms;
         }
 
         /// <summary>
         /// 查询报警
         /// </summary>
+        /// <param name="cancellationToken"></param>
         /// <param name="model"></param>
         /// <param name="PageNumber"></param>
         /// <param name="PageSize"></param>
         /// <returns></returns>
         [HttpGet]
-        public async Task<ActionResult<PagedResult<Alarm>>> GetAlarm([FromQuery] GetAlarmViewModel model, int PageNumber = 1, int PageSize = 30)
+        public async Task<ActionResult<PagedResult<Alarm>>> GetAlarm([FromQuery] GetAlarmViewModel model, CancellationToken cancellationToken = default, int PageNumber = 1, int PageSize = 30)
         {
             string cacheKey = $"GetAlarm_{JsonSerializer.Serialize(model)}_{PageNumber}_{PageSize}";
-            var cachedResult = await redisCacheService.GetAsync<PagedResult<Alarm>>(cacheKey);
+            var cachedResult = await redisCacheService.GetAsync<PagedResult<Alarm>>(cacheKey, cancellationToken);
             if (cachedResult != null)
             {
                 return cachedResult;
@@ -244,14 +258,14 @@ namespace com.hollysys.Industrial_control_alarm_system.Controllers
                 query = query.Where(e => e.AlarmTime <= model.End_AlarmTime);
             }
 
-            var totalItems = await query.CountAsync();
+            var totalItems = await query.CountAsync(cancellationToken);
             var totalPages = (int)Math.Ceiling(totalItems / (double)PageSize);
 
             var alarms = await query
                 .OrderByDescending(e => e.AlarmTime)
                 .Skip((PageNumber - 1) * PageSize)
                 .Take(PageSize)
-                .ToListAsync();
+                .ToListAsync(cancellationToken);
             var result = new PagedResult<Alarm>
             {
                 Items = alarms,
@@ -259,7 +273,7 @@ namespace com.hollysys.Industrial_control_alarm_system.Controllers
                 TotalPages = totalPages
             };
 
-            await redisCacheService.SetAsync(cacheKey, result, TimeSpan.FromMinutes(60));
+            redisCacheService.SetAsync(cacheKey, result, TimeSpan.FromMinutes(60), cancellationToken);
             return result;
         }
 
@@ -287,6 +301,7 @@ namespace com.hollysys.Industrial_control_alarm_system.Controllers
                 await redisCacheService.RemoveAsync("Latest30RealTimeAlarms");
                 await redisCacheService.RemoveAsync("TenRealTimeAlarm");
                 await redisCacheService.RemoveByPatternAsync("RealTimeAlarms_TimeIsNull_");
+                await redisCacheService.RemoveByPatternAsync("HistoryAlarms_TimeIsNull_");
             }
         }
 
@@ -307,12 +322,13 @@ namespace com.hollysys.Industrial_control_alarm_system.Controllers
             alarm.ConfirmTime = DateTime.Now;
             if (await context.SaveChangesAsync() > 0)
             {
-                //await redisCacheService.RemoveByPatternAsync("RealTimeAlarms_");
-                await redisCacheService.RemoveByPatternAsync("HistoryAlarms_");
+                await redisCacheService.RemoveAsync("Latest30HistoryTimeAlarms");
                 await redisCacheService.RemoveAsync("TenRealTimeAlarm");
+                await redisCacheService.RemoveByPatternAsync("HistoryAlarms_");
                 await redisCacheService.RemoveByPatternAsync("RealTimeAlarms_TimeIsNull_");
+                await redisCacheService.RemoveByPatternAsync("HistoryAlarms_TimeIsNull_");
             }
-            
+
             return NoContent();
         }
 
@@ -333,10 +349,11 @@ namespace com.hollysys.Industrial_control_alarm_system.Controllers
             alarm.RecoverTime = DateTime.Now;
             if (await context.SaveChangesAsync() > 0)
             {
-                //await redisCacheService.RemoveByPatternAsync("RealTimeAlarms_");
-                await redisCacheService.RemoveByPatternAsync("HistoryAlarms_");
+                await redisCacheService.RemoveAsync("Latest30HistoryTimeAlarms");
                 await redisCacheService.RemoveAsync("TenRealTimeAlarm");
+                await redisCacheService.RemoveByPatternAsync("HistoryAlarms_");
                 await redisCacheService.RemoveByPatternAsync("RealTimeAlarms_TimeIsNull_");
+                await redisCacheService.RemoveByPatternAsync("HistoryAlarms_TimeIsNull_");
             }
             return NoContent();
         }

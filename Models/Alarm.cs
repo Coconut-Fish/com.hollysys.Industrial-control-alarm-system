@@ -1,4 +1,4 @@
-﻿namespace com.hollysys.Industrial_control_alarm_system.Models
+﻿namespace Server.Models
 {
     public class Alarm
     {

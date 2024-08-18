@@ -1,8 +1,8 @@
-﻿using com.hollysys.Industrial_control_alarm_system.Data;
-using com.hollysys.Industrial_control_alarm_system.Services.IService;
+﻿using Server.Data;
+using Server.Services.IService;
 using Microsoft.EntityFrameworkCore;
 
-namespace com.hollysys.Industrial_control_alarm_system.Services
+namespace Server.Services
 {
     public class AlarmService : IAlarmService
     {

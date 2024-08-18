@@ -1,4 +1,4 @@
-﻿namespace com.hollysys.Industrial_control_alarm_system.ViewModels
+﻿namespace Server.ViewModels
 {
     public class PagedResult<T>
     {

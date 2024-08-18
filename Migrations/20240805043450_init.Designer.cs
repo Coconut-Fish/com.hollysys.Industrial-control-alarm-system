@@ -5,15 +5,15 @@ using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
-using com.hollysys.Industrial_control_alarm_system.Data;
+using Server.Data;
 
 #nullable disable
 
-namespace com.hollysys.Industrial_control_alarm_system.Migrations
+namespace Server.Migrations
 {
     [DbContext(typeof(IndustrialControlAlarmSystemContext))]
     [Migration("20240805043450_init")]
-    partial class init
+    partial class Init
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)

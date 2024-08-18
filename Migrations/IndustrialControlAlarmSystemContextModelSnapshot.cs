@@ -4,11 +4,11 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
-using com.hollysys.Industrial_control_alarm_system.Data;
+using Server.Data;
 
 #nullable disable
 
-namespace com.hollysys.Industrial_control_alarm_system.Migrations
+namespace Server.Migrations
 {
     [DbContext(typeof(IndustrialControlAlarmSystemContext))]
     partial class IndustrialControlAlarmSystemContextModelSnapshot : ModelSnapshot
