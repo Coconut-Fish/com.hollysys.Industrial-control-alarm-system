@@ -324,6 +324,8 @@ namespace Server.Controllers
             if (await context.SaveChangesAsync() > 0)
             {
                 await redisCacheService.RemoveAsync("Latest30HistoryTimeAlarms");
+                await redisCacheService.RemoveAsync("Latest30RealTimeAlarms");
+
                 await redisCacheService.RemoveAsync("TenRealTimeAlarm");
                 await redisCacheService.RemoveByPatternAsync("HistoryAlarms_");
                 await redisCacheService.RemoveByPatternAsync("RealTimeAlarms_");
@@ -350,6 +352,8 @@ namespace Server.Controllers
             if (await context.SaveChangesAsync() > 0)
             {
                 await redisCacheService.RemoveAsync("Latest30HistoryTimeAlarms");
+                await redisCacheService.RemoveAsync("Latest30RealTimeAlarms");
+
                 await redisCacheService.RemoveAsync("TenRealTimeAlarm");
                 await redisCacheService.RemoveByPatternAsync("HistoryAlarms_");
                 await redisCacheService.RemoveByPatternAsync("RealTimeAlarms_");
