@@ -6,6 +6,7 @@ using Server.ViewModels;
 using Server.Services;
 using System.Text.Json;
 using Microsoft.Extensions.Caching.Distributed;
+using System.Threading;
 
 namespace Server.Controllers
 {
@@ -356,6 +357,32 @@ namespace Server.Controllers
                 await redisCacheService.RemoveByPatternAsync("HistoryAlarms_TimeIsNull_");
             }
             return NoContent();
+        }
+
+        [HttpGet]
+        public async Task<ActionResult> Index()
+        {
+            var RealTimeAlarmTimes = await context.Alarms
+                .Where(e => e.IsConfirmed == false || e.IsRecovered == false)
+                .CountAsync();
+            var HistoryAlarmTimes = await context.Alarms
+                .Where(e => e.IsConfirmed == true && e.IsRecovered == true)
+                .CountAsync();
+            var notConfirmedAlarmTimes = await context.Alarms
+                .Where(e => e.IsConfirmed == false)
+                .CountAsync();
+            var notRecoveredAlarmTimes = await context.Alarms
+                .Where(e => e.IsRecovered == false)
+                .CountAsync();
+            var CountGroupByLevel = await context.Alarms
+                .GroupBy(alarm => alarm.Level)
+                .Select(group => new { Level = group.Key, Count = group.Count() })
+                .ToDictionaryAsync(g => g.Level, g => g.Count);
+            var CountGroupByType = await context.Alarms
+                .GroupBy(alarm => alarm.Type)
+                .Select(group => new { Type = group.Key, Count = group.Count() })
+                .ToDictionaryAsync(g => g.Type, g => g.Count);
+            return Ok(new { RealTimeAlarmTimes, HistoryAlarmTimes, notConfirmedAlarmTimes, notRecoveredAlarmTimes, CountGroupByLevel, CountGroupByType });
         }
     }
 }
