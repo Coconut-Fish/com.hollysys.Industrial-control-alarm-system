@@ -301,8 +301,8 @@ namespace Server.Controllers
             {
                 await redisCacheService.RemoveAsync("Latest30RealTimeAlarms");
                 await redisCacheService.RemoveAsync("TenRealTimeAlarm");
-                await redisCacheService.RemoveByPatternAsync("RealTimeAlarms_TimeIsNull_");
-                await redisCacheService.RemoveByPatternAsync("HistoryAlarms_TimeIsNull_");
+                await redisCacheService.RemoveByPatternAsync("RealTimeAlarms_");
+                await redisCacheService.RemoveByPatternAsync("HistoryAlarms_");
             }
         }
 
@@ -326,8 +326,7 @@ namespace Server.Controllers
                 await redisCacheService.RemoveAsync("Latest30HistoryTimeAlarms");
                 await redisCacheService.RemoveAsync("TenRealTimeAlarm");
                 await redisCacheService.RemoveByPatternAsync("HistoryAlarms_");
-                await redisCacheService.RemoveByPatternAsync("RealTimeAlarms_TimeIsNull_");
-                await redisCacheService.RemoveByPatternAsync("HistoryAlarms_TimeIsNull_");
+                await redisCacheService.RemoveByPatternAsync("RealTimeAlarms_");
             }
 
             return NoContent();
@@ -353,8 +352,7 @@ namespace Server.Controllers
                 await redisCacheService.RemoveAsync("Latest30HistoryTimeAlarms");
                 await redisCacheService.RemoveAsync("TenRealTimeAlarm");
                 await redisCacheService.RemoveByPatternAsync("HistoryAlarms_");
-                await redisCacheService.RemoveByPatternAsync("RealTimeAlarms_TimeIsNull_");
-                await redisCacheService.RemoveByPatternAsync("HistoryAlarms_TimeIsNull_");
+                await redisCacheService.RemoveByPatternAsync("RealTimeAlarms_");
             }
             return NoContent();
         }
