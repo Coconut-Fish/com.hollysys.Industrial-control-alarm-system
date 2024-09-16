@@ -7,6 +7,9 @@ using Server.Services;
 using System.Text.Json;
 using Microsoft.Extensions.Caching.Distributed;
 using System.Threading;
+using Microsoft.AspNetCore.SignalR;
+using Server.Hubs;
+using System.Diagnostics;
 
 namespace Server.Controllers
 {
@@ -16,12 +19,15 @@ namespace Server.Controllers
     {
         private readonly IndustrialControlAlarmSystemContext context;
         private readonly RedisCacheService redisCacheService;
-        private readonly IDistributedCache redis;
-        public AlarmController(IndustrialControlAlarmSystemContext context, RedisCacheService redisCacheService, IDistributedCache reids)
+        //private readonly IDistributedCache redis;
+        private readonly IHubContext<ChatHub> hubContext;
+
+        public AlarmController(IndustrialControlAlarmSystemContext context, RedisCacheService redisCacheService, IDistributedCache reids, IHubContext<ChatHub> hubContext)
         {
             this.context = context;
             this.redisCacheService = redisCacheService;
-            this.redis = reids;
+            //this.redis = reids;
+            this.hubContext = hubContext;
         }
 
         /// <summary>
@@ -299,6 +305,7 @@ namespace Server.Controllers
             context.Alarms.Add(alarm);
             if (await context.SaveChangesAsync() > 0)
             {
+                await hubContext.Clients.All.SendAsync("添加数据");
                 await redisCacheService.RemoveAsync("Latest30RealTimeAlarms");
                 await redisCacheService.RemoveAsync("TenRealTimeAlarm");
                 await redisCacheService.RemoveByPatternAsync("RealTimeAlarms_");
@@ -319,10 +326,15 @@ namespace Server.Controllers
             {
                 return NotFound();
             }
-            alarm.IsConfirmed = true;
-            alarm.ConfirmTime = DateTime.Now;
+            if (alarm.IsConfirmed != true)
+            {
+                alarm.IsConfirmed = true;
+                alarm.ConfirmTime = DateTime.Now;
+            }
+            
             if (await context.SaveChangesAsync() > 0)
             {
+                await hubContext.Clients.All.SendAsync("更新确认状态");
                 await redisCacheService.RemoveAsync("Latest30HistoryTimeAlarms");
                 await redisCacheService.RemoveAsync("Latest30RealTimeAlarms");
 
@@ -347,10 +359,16 @@ namespace Server.Controllers
             {
                 return NotFound();
             }
-            alarm.IsRecovered = true;
-            alarm.RecoverTime = DateTime.Now;
+            if (alarm.IsRecovered != true)
+            {
+                alarm.IsRecovered = true;
+                alarm.RecoverTime = DateTime.Now;
+            }
+            
             if (await context.SaveChangesAsync() > 0)
             {
+                await hubContext.Clients.All.SendAsync("更新恢复状态");
+
                 await redisCacheService.RemoveAsync("Latest30HistoryTimeAlarms");
                 await redisCacheService.RemoveAsync("Latest30RealTimeAlarms");
 

@@ -52,12 +52,12 @@ namespace Server.Services
         }*/
 
         private readonly IDistributedCache cache;
-        private readonly ConnectionMultiplexer _redis;
+        private readonly ConnectionMultiplexer redis;
 
         public RedisCacheService(IDistributedCache cache,string connectionString)
         {
             this.cache = cache;
-            this._redis = ConnectionMultiplexer.Connect(connectionString);
+            this.redis = ConnectionMultiplexer.Connect(connectionString);
         }
 
         public void SetAsync<T>(string key, T value, TimeSpan? expiry = null, CancellationToken token = default)
@@ -86,7 +86,7 @@ namespace Server.Services
 
         public async Task RemoveByPatternAsync(string pattern, CancellationToken token = default)
         {
-            var server = _redis.GetServer(_redis.GetEndPoints().First());
+            var server = redis.GetServer(redis.GetEndPoints().First());
             var keys = server.Keys(pattern: pattern + "*").ToArray();
             if (keys.Length == 0)
             {

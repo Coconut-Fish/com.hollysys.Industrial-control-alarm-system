@@ -4,6 +4,8 @@ using Microsoft.OpenApi.Models;
 using Server.Services;
 using System.Reflection;
 using Microsoft.Extensions.Caching.Distributed;
+using Server.Hubs;
+using Microsoft.AspNetCore.SignalR;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -14,6 +16,8 @@ builder.Services.AddDbContext<IndustrialControlAlarmSystemContext>(options =>
 #endregion
 // Add services to the container.
 
+builder.Services.AddSignalR();
+
 //øÁ”Ú≈‰÷√
 builder.Services.AddCors(options =>
 {
@@ -21,10 +25,19 @@ builder.Services.AddCors(options =>
         policy =>
         {
             policy
-            .AllowAnyOrigin()
+            .WithOrigins("http://localhost:5173")
             .AllowAnyHeader()
-            .AllowAnyMethod();
+            .AllowAnyMethod()
+            .AllowCredentials();
         });
+    options.AddPolicy("ws",policy =>
+    {
+        policy
+        .WithOrigins("http://localhost:5173")
+        .AllowAnyHeader()
+        .AllowAnyMethod()
+        .AllowCredentials();
+    });
 });
 
 #region redis≈‰÷√
@@ -71,6 +84,8 @@ if (app.Environment.IsDevelopment())
 app.UseCors();
 
 app.UseAuthorization();
+
+app.MapHub<ChatHub>("/chatHub");
 
 app.MapControllers();
 
