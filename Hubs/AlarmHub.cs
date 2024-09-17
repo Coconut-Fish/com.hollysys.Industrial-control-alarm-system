@@ -4,7 +4,7 @@ using System.Diagnostics;
 
 namespace Server.Hubs
 {
-    public class ChatHub : Hub
+    public class AlarmHub : Hub
     {
         
     }

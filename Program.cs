@@ -30,14 +30,6 @@ builder.Services.AddCors(options =>
             .AllowAnyMethod()
             .AllowCredentials();
         });
-    options.AddPolicy("ws",policy =>
-    {
-        policy
-        .WithOrigins("http://localhost:5173")
-        .AllowAnyHeader()
-        .AllowAnyMethod()
-        .AllowCredentials();
-    });
 });
 
 #region redis≈‰÷√
@@ -85,7 +77,7 @@ app.UseCors();
 
 app.UseAuthorization();
 
-app.MapHub<ChatHub>("/chatHub");
+app.MapHub<AlarmHub>("/alarmHub");
 
 app.MapControllers();
 
